@@ -161,22 +161,58 @@
         { lat: 45.50, lng: -73.57, label: 'Montréal' },
       ];
 
-      // Elegant HTML marker: label text above a soft glowing dot
-      function makeMarker(d) {
+      // Convert lat/lng to a unit vector in globe.gl's Three.js coordinate space
+      function toUnitVec(lat, lng) {
+        var phi   = (90 - lat) * Math.PI / 180;
+        var theta = (lng + 180) * Math.PI / 180;
+        return {
+          x: -Math.sin(phi) * Math.cos(theta),
+          y:  Math.cos(phi),
+          z:  Math.sin(phi) * Math.sin(theta)
+        };
+      }
+
+      // Track marker elements for the visibility culling loop
+      var markerEntries = places.map(function(d) {
+        return { vec: toUnitVec(d.lat, d.lng), el: null, labelEl: null };
+      });
+
+      function makeMarker(d, idx) {
+        // Find the matching entry by coordinates
+        var entry = markerEntries.filter(function(e) {
+          return Math.abs(toUnitVec(d.lat, d.lng).x - e.vec.x) < 0.0001;
+        })[0] || markerEntries[idx];
+
         var el = document.createElement('div');
-        el.style.cssText = 'pointer-events:none;display:flex;flex-direction:column;align-items:center;';
-        el.innerHTML =
-          '<span style="' +
-            'font-family:\'DM Sans\',sans-serif;font-size:11px;font-weight:500;' +
-            'color:rgba(255,248,215,0.96);white-space:nowrap;letter-spacing:0.06em;' +
-            'text-shadow:0 1px 6px rgba(0,0,0,1),0 0 12px rgba(0,0,0,0.8);' +
-            'margin-bottom:4px;' +
-          '">' + d.label + '</span>' +
-          '<div style="' +
-            'width:7px;height:7px;border-radius:50%;' +
-            'background:rgba(255,195,70,0.95);' +
-            'box-shadow:0 0 8px 2px rgba(255,190,60,0.55),0 0 2px rgba(255,200,80,0.9);' +
-          '"></div>';
+        el.style.cssText = 'display:flex;flex-direction:column;align-items:center;cursor:default;';
+
+        var labelEl = document.createElement('span');
+        labelEl.textContent = d.label;
+        labelEl.style.cssText =
+          'font-family:\'DM Sans\',sans-serif;font-size:11px;font-weight:500;' +
+          'color:rgba(255,248,215,0.96);white-space:nowrap;letter-spacing:0.06em;' +
+          'text-shadow:0 1px 6px rgba(0,0,0,1),0 0 12px rgba(0,0,0,0.8);' +
+          'margin-bottom:4px;display:none;pointer-events:none;';
+
+        var dotEl = document.createElement('div');
+        dotEl.style.cssText =
+          'width:8px;height:8px;border-radius:50%;' +
+          'background:rgba(255,195,70,0.95);' +
+          'box-shadow:0 0 8px 2px rgba(255,190,60,0.55),0 0 2px rgba(255,200,80,0.9);';
+
+        el.appendChild(labelEl);
+        el.appendChild(dotEl);
+
+        // Show label on hover / touch
+        el.addEventListener('mouseenter', function() { labelEl.style.display = ''; });
+        el.addEventListener('mouseleave', function() { labelEl.style.display = 'none'; });
+        el.addEventListener('touchstart', function() {
+          labelEl.style.display = labelEl.style.display === 'none' ? '' : 'none';
+        }, { passive: true });
+
+        // Store references
+        entry.el = el;
+        entry.labelEl = labelEl;
         return el;
       }
 
@@ -200,12 +236,28 @@
       ctrl.autoRotateSpeed = 0.4;
       ctrl.enableDamping = true;
       ctrl.dampingFactor = 0.1;
-      ctrl.minDistance = 164;  // max zoom-in  (−10% vs prior)
-      ctrl.maxDistance = 428;  // max zoom-out (−5% vs prior)
-      // altitude 1.6 → globe fills ~85% of container, matching target size
+      ctrl.minDistance = 164;
+      ctrl.maxDistance = 428;
       globe.pointOfView({ lat: 35, lng: 60, altitude: 1.6 }, 0);
 
-      // Pause rotation while user drags; resume 3 s after release
+      // Hemisphere culling: hide markers when their surface point faces away from camera.
+      // Runs every animation frame so it stays in sync with rotation and user drag.
+      function cullMarkers() {
+        var cam = globe.camera().position;
+        markerEntries.forEach(function(m) {
+          if (!m.el) return;
+          // Positive dot product → point faces camera (front hemisphere)
+          var dot = m.vec.x * cam.x + m.vec.y * cam.y + m.vec.z * cam.z;
+          var show = dot > 0;
+          m.el.style.visibility   = show ? 'visible' : 'hidden';
+          m.el.style.pointerEvents = show ? 'auto'   : 'none';
+          if (!show) m.labelEl.style.display = 'none'; // clean up on hide
+        });
+        requestAnimationFrame(cullMarkers);
+      }
+      requestAnimationFrame(cullMarkers);
+
+      // Pause auto-rotation while dragging; resume after 3 s
       var resumeTimer;
       ctrl.addEventListener('start', function() {
         ctrl.autoRotate = false;
