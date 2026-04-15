@@ -161,38 +161,24 @@
         { lat: 45.50, lng: -73.57, label: 'Montréal' },
       ];
 
-      // Convert lat/lng to a unit vector in globe.gl's Three.js coordinate space
-      function toUnitVec(lat, lng) {
-        var phi   = (90 - lat) * Math.PI / 180;
-        var theta = (lng + 180) * Math.PI / 180;
-        return {
-          x: -Math.sin(phi) * Math.cos(theta),
-          y:  Math.cos(phi),
-          z:  Math.sin(phi) * Math.sin(theta)
-        };
-      }
-
-      // Track marker elements for the visibility culling loop
+      // Track marker elements; unit vectors will be filled in after globe is created
+      // using globe.getCoords() — globe.gl's own API — so the coordinate system is exact.
       var markerEntries = places.map(function(d) {
-        return { vec: toUnitVec(d.lat, d.lng), el: null, labelEl: null };
+        return { label: d.label, lat: d.lat, lng: d.lng, vec: null, el: null, labelEl: null };
       });
 
-      function makeMarker(d, idx) {
-        // Find the matching entry by coordinates
-        var entry = markerEntries.filter(function(e) {
-          return Math.abs(toUnitVec(d.lat, d.lng).x - e.vec.x) < 0.0001;
-        })[0] || markerEntries[idx];
+      function makeMarker(d) {
+        var entry = null;
+        for (var i = 0; i < markerEntries.length; i++) {
+          if (markerEntries[i].label === d.label) { entry = markerEntries[i]; break; }
+        }
 
+        // Container is exactly the dot size; label floats above via absolute positioning
+        // so appearing/disappearing the label never moves the dot's anchor point.
         var el = document.createElement('div');
-        el.style.cssText = 'display:flex;flex-direction:column;align-items:center;cursor:default;';
-
-        var labelEl = document.createElement('span');
-        labelEl.textContent = d.label;
-        labelEl.style.cssText =
-          'font-family:\'DM Sans\',sans-serif;font-size:11px;font-weight:500;' +
-          'color:rgba(255,248,215,0.96);white-space:nowrap;letter-spacing:0.06em;' +
-          'text-shadow:0 1px 6px rgba(0,0,0,1),0 0 12px rgba(0,0,0,0.8);' +
-          'margin-bottom:4px;display:none;pointer-events:none;';
+        el.style.cssText =
+          'position:relative;width:8px;height:8px;' +
+          'display:flex;align-items:center;justify-content:center;';
 
         var dotEl = document.createElement('div');
         dotEl.style.cssText =
@@ -200,19 +186,27 @@
           'background:rgba(255,195,70,0.95);' +
           'box-shadow:0 0 8px 2px rgba(255,190,60,0.55),0 0 2px rgba(255,200,80,0.9);';
 
-        el.appendChild(labelEl);
-        el.appendChild(dotEl);
+        // Label sits above the dot via absolute positioning — zero layout impact
+        var labelEl = document.createElement('span');
+        labelEl.textContent = d.label;
+        labelEl.style.cssText =
+          'position:absolute;bottom:calc(100% + 5px);left:50%;transform:translateX(-50%);' +
+          'font-family:\'DM Sans\',sans-serif;font-size:11px;font-weight:500;' +
+          'color:rgba(255,248,215,0.96);white-space:nowrap;letter-spacing:0.06em;' +
+          'text-shadow:0 1px 6px rgba(0,0,0,1),0 0 12px rgba(0,0,0,0.8);' +
+          'pointer-events:none;display:none;';
 
-        // Show label on hover / touch
-        el.addEventListener('mouseenter', function() { labelEl.style.display = ''; });
+        el.appendChild(dotEl);
+        el.appendChild(labelEl);
+
+        // Show label on hover / touch — dot anchor never moves
+        el.addEventListener('mouseenter', function() { labelEl.style.display = 'block'; });
         el.addEventListener('mouseleave', function() { labelEl.style.display = 'none'; });
         el.addEventListener('touchstart', function() {
-          labelEl.style.display = labelEl.style.display === 'none' ? '' : 'none';
+          labelEl.style.display = labelEl.style.display === 'none' ? 'block' : 'none';
         }, { passive: true });
 
-        // Store references
-        entry.el = el;
-        entry.labelEl = labelEl;
+        if (entry) { entry.el = el; entry.labelEl = labelEl; }
         return el;
       }
 
@@ -231,6 +225,14 @@
         .htmlAltitude(0.02)
         .htmlElement(makeMarker);
 
+      // Use globe.gl's own getCoords() so unit vectors match the exact Three.js
+      // coordinate system — fixes asymmetric culling caused by manual formula mismatch.
+      markerEntries.forEach(function(m) {
+        var p = globe.getCoords(m.lat, m.lng, 0);  // returns {x,y,z} at globe surface
+        var len = Math.sqrt(p.x*p.x + p.y*p.y + p.z*p.z) || 100;
+        m.vec = { x: p.x/len, y: p.y/len, z: p.z/len };
+      });
+
       var ctrl = globe.controls();
       ctrl.autoRotate = true;
       ctrl.autoRotateSpeed = 0.4;
@@ -240,18 +242,17 @@
       ctrl.maxDistance = 428;
       globe.pointOfView({ lat: 35, lng: 60, altitude: 1.6 }, 0);
 
-      // Hemisphere culling: hide markers when their surface point faces away from camera.
-      // Runs every animation frame so it stays in sync with rotation and user drag.
+      // Hemisphere culling: dot-product of surface unit vector vs. camera position.
+      // Positive → point faces camera (visible); negative → behind globe (hide).
       function cullMarkers() {
         var cam = globe.camera().position;
         markerEntries.forEach(function(m) {
-          if (!m.el) return;
-          // Positive dot product → point faces camera (front hemisphere)
+          if (!m.el || !m.vec) return;
           var dot = m.vec.x * cam.x + m.vec.y * cam.y + m.vec.z * cam.z;
           var show = dot > 0;
-          m.el.style.visibility   = show ? 'visible' : 'hidden';
-          m.el.style.pointerEvents = show ? 'auto'   : 'none';
-          if (!show) m.labelEl.style.display = 'none'; // clean up on hide
+          m.el.style.visibility    = show ? 'visible' : 'hidden';
+          m.el.style.pointerEvents = show ? 'auto'    : 'none';
+          if (!show) m.labelEl.style.display = 'none';
         });
         requestAnimationFrame(cullMarkers);
       }
