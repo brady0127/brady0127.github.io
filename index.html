@@ -200,8 +200,8 @@
       ctrl.autoRotateSpeed = 0.4;
       ctrl.enableDamping = true;
       ctrl.dampingFactor = 0.1;
-      ctrl.minDistance = 149;  // max zoom-in  (altitude ≈ 0.49, −10% vs prior)
-      ctrl.maxDistance = 450;  // max zoom-out (altitude ≈ 3.5)
+      ctrl.minDistance = 164;  // max zoom-in  (−10% vs prior)
+      ctrl.maxDistance = 428;  // max zoom-out (−5% vs prior)
       // altitude 1.6 → globe fills ~85% of container, matching target size
       globe.pointOfView({ lat: 35, lng: 60, altitude: 1.6 }, 0);
 
