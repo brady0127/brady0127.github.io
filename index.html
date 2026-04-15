@@ -143,9 +143,15 @@
   <script src="https://cdn.jsdelivr.net/npm/globe.gl/dist/globe.gl.min.js"></script>
   <script>
     // Places I've Been To — interactive 3D globe
-    (function initGlobe() {
+    // Use requestAnimationFrame so CSS layout is fully applied before reading dimensions
+    requestAnimationFrame(function() {
       var container = document.getElementById('globe-container');
-      if (!container) return;
+      if (!container || typeof Globe === 'undefined') return;
+
+      var w = container.offsetWidth;
+      var h = container.offsetHeight;
+      if (w === 0) w = 600;
+      if (h === 0) h = 420;
 
       var places = [
         { lat: 37.47, lng: 121.45, label: '山东烟台' },
@@ -175,6 +181,8 @@
       }
 
       var globe = Globe()(container)
+        .width(w)
+        .height(h)
         .globeImageUrl('https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-blue-marble.jpg')
         .bumpImageUrl('https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-topology.png')
         .backgroundColor('rgba(0,0,0,0)')
@@ -192,8 +200,8 @@
       ctrl.autoRotateSpeed = 0.4;
       ctrl.enableDamping = true;
       ctrl.dampingFactor = 0.1;
-      // altitude 2.8 → globe fits nicely centered; lat/lng shows Eurasia (UK left, China right)
-      globe.pointOfView({ lat: 35, lng: 50, altitude: 2.8 }, 0);
+      // altitude 4.5 → globe appears smaller and fits centered in its container
+      globe.pointOfView({ lat: 35, lng: 60, altitude: 4.5 }, 0);
 
       // Pause rotation while user drags; resume 3 s after release
       var resumeTimer;
@@ -204,7 +212,7 @@
       ctrl.addEventListener('end', function() {
         resumeTimer = setTimeout(function() { ctrl.autoRotate = true; }, 3000);
       });
-    })();
+    });
   </script>
 </body>
 </html>
