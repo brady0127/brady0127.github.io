@@ -75,7 +75,7 @@ img { max-width: 100%; display: block; }
 }
 .nav-brand {
   font-family: 'Newsreader', Georgia, serif;
-  font-size: 1.7rem; font-weight: 500;
+  font-size: calc(1.7rem - 0.5px); font-weight: 500;
   color: var(--ink); letter-spacing: -0.01em;
   white-space: nowrap;
 }
