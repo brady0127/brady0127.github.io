@@ -9,6 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;1,6..72,300;1,6..72,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/globe.gl" defer></script>
 </head>
 <body>
   <div class="grain"></div>
@@ -63,8 +64,9 @@
         </div>
         <div class="hero-portrait fade-in d3">
           <div class="portrait-frame">
-            <!-- Replace src with your actual photo, e.g. assets/img/portrait.jpg -->
-            <div class="portrait-placeholder">
+            <img src="assets/img/portrait.jpg" alt="Bin(Brady) Zhang"
+                 onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+            <div class="portrait-placeholder" style="display:none;">
               <span>Your<br>Photo</span>
             </div>
           </div>
@@ -122,20 +124,76 @@
       </div>
       <a href="projects.html" class="see-more">View all projects →</a>
     </section>
+
+    <section class="section" id="places">
+      <h2 class="section-title">Places I've Been To</h2>
+      <div class="globe-wrapper">
+        <div id="globe-container"></div>
+        <p class="globe-hint">Drag to rotate · Scroll to zoom</p>
+      </div>
+    </section>
   </main>
 
   <footer class="footer">
-    <div class="footer-inner">
-      <div class="footer-left">
-        <p>© 2026 Bin(Brady) Zhang</p>
-      </div>
-      <div class="footer-center">Bin(Brady) Zhang</div>
-      <div class="footer-right">
-        <p><a href="https://github.com/brady0127/brady0127.github.io" target="_blank">Source on GitHub</a></p>
-      </div>
-    </div>
+    <p>© 2026 Bin(Brady) Zhang</p>
+    <p class="footer-sub"><a href="https://github.com/brady0127/brady0127.github.io" target="_blank">Source on GitHub</a></p>
   </footer>
 
   <script src="assets/js/main.js"></script>
+  <script>
+    // Places I've Been To — interactive 3D globe
+    (function initGlobe() {
+      var container = document.getElementById('globe-container');
+      if (!container || typeof Globe === 'undefined') return;
+
+      var places = [
+        { lat: 37.47, lng: 121.45, label: '山东烟台' },
+        { lat: 31.23, lng: 121.47, label: '上海' },
+        { lat: 51.51, lng: -0.13,  label: 'London' },
+        { lat: 55.95, lng: -3.19,  label: 'Edinburgh' },
+        { lat: 45.50, lng: -73.57, label: 'Montréal' },
+      ];
+
+      var globe = Globe()(container)
+        .globeImageUrl('https://unpkg.com/three-globe/example/img/earth-day.jpg')
+        .bumpImageUrl('https://unpkg.com/three-globe/example/img/earth-topology.png')
+        .backgroundColor('rgba(0,0,0,0)')
+        .showAtmosphere(true)
+        .atmosphereColor('#5aadee')
+        .atmosphereAltitude(0.12)
+        .pointsData(places)
+        .pointLat(function(d) { return d.lat; })
+        .pointLng(function(d) { return d.lng; })
+        .pointColor(function() { return '#ff9640'; })
+        .pointRadius(0.55)
+        .pointAltitude(0.025)
+        .labelsData(places)
+        .labelLat(function(d) { return d.lat; })
+        .labelLng(function(d) { return d.lng; })
+        .labelText(function(d) { return d.label; })
+        .labelSize(0.85)
+        .labelDotRadius(0)
+        .labelColor(function() { return 'rgba(255, 245, 200, 0.95)'; })
+        .labelResolution(2)
+        .labelAltitude(0.03);
+
+      var ctrl = globe.controls();
+      ctrl.autoRotate = true;
+      ctrl.autoRotateSpeed = 0.5;
+      ctrl.enableDamping = true;
+      ctrl.dampingFactor = 0.1;
+      globe.pointOfView({ lat: 40, lng: 90, altitude: 2.2 }, 0);
+
+      // Pause rotation while user drags; resume 3 s after they release
+      var resumeTimer;
+      ctrl.addEventListener('start', function() {
+        ctrl.autoRotate = false;
+        clearTimeout(resumeTimer);
+      });
+      ctrl.addEventListener('end', function() {
+        resumeTimer = setTimeout(function() { ctrl.autoRotate = true; }, 3000);
+      });
+    })();
+  </script>
 </body>
 </html>
