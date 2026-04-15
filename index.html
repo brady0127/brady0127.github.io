@@ -154,8 +154,8 @@
       if (h === 0) h = 420;
 
       var places = [
-        { lat: 37.47, lng: 121.45, label: '山东烟台' },
-        { lat: 31.23, lng: 121.47, label: '上海' },
+        { lat: 37.47, lng: 121.45, label: 'Yantai' },
+        { lat: 31.23, lng: 121.47, label: 'Shanghai' },
         { lat: 51.51, lng: -0.13,  label: 'London' },
         { lat: 55.95, lng: -3.19,  label: 'Edinburgh' },
         { lat: 45.50, lng: -73.57, label: 'Montréal' },
@@ -200,7 +200,7 @@
       ctrl.autoRotateSpeed = 0.4;
       ctrl.enableDamping = true;
       ctrl.dampingFactor = 0.1;
-      ctrl.minDistance = 135;  // max zoom-in  (altitude ≈ 0.35)
+      ctrl.minDistance = 149;  // max zoom-in  (altitude ≈ 0.49, −10% vs prior)
       ctrl.maxDistance = 450;  // max zoom-out (altitude ≈ 3.5)
       // altitude 1.6 → globe fills ~85% of container, matching target size
       globe.pointOfView({ lat: 35, lng: 60, altitude: 1.6 }, 0);
