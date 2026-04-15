@@ -183,7 +183,7 @@
       var globe = Globe()(container)
         .width(w)
         .height(h)
-        .globeImageUrl('https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-blue-marble.jpg')
+        .globeImageUrl('https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-day.jpg')
         .bumpImageUrl('https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-topology.png')
         .backgroundColor('rgba(0,0,0,0)')
         .showAtmosphere(true)
@@ -200,8 +200,8 @@
       ctrl.autoRotateSpeed = 0.4;
       ctrl.enableDamping = true;
       ctrl.dampingFactor = 0.1;
-      // altitude 4.5 → globe appears smaller and fits centered in its container
-      globe.pointOfView({ lat: 35, lng: 60, altitude: 4.5 }, 0);
+      // altitude 1.6 → globe fills ~85% of container, matching target size
+      globe.pointOfView({ lat: 35, lng: 60, altitude: 1.6 }, 0);
 
       // Pause rotation while user drags; resume 3 s after release
       var resumeTimer;
